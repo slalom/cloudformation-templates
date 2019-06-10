@@ -29,8 +29,7 @@ Parameters:
     Default: dev
   S3BucketName:
     Type: String
-    Description: S3 Bucket used for application deployment
-    Default: dev
+    Description: Name of artifact bucket
 
 Mappings:
   BuildEnvironmentsMap:
@@ -46,11 +45,6 @@ Mappings:
       image: aws/codebuild/ruby:2.5.1
 
 Resources:
-
-  AppBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub ${S3BucketName}
 
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -96,13 +90,13 @@ Resources:
                 Version: 1
               Configuration:
                 ActionMode: CHANGE_SET_REPLACE
-                Capabilities: CAPABILITY_IAM
+                Capabilities: CAPABILITY_NAMED_IAM
                 TemplatePath: BuildOutput::template-output.yml
                 ChangeSetName: !Sub ${RepositoryName}-changeset
                 StackName: !Sub ${RepositoryName}-dev
                 RoleArn: !GetAtt CloudFormationServiceRole.Arn
                 ParameterOverrides: !Sub '{
-                  "S3BucketName" : "${S3BucketName}",
+                  "S3BucketName": "${S3BucketName}",
                   "StageName": "${StageName}"
                 }'
               InputArtifacts:
@@ -149,7 +143,7 @@ Resources:
   ArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub codepipeline.${RepositoryName}.${AWS::Region}
+      BucketName: !Ref S3BucketName
       LifecycleConfiguration:
         Rules:
           - Id: DeleteBuildArtifactsAfterOneWeek
