@@ -36,11 +36,25 @@ STACK_NAME=${REPO_NAME}-cicd-$STAGE_NAME
 TEMPLATE_BODY=$(cat ${SCRIPT_DIR}/sam-template.yml)
 S3_BUCKET_NAME=${REPO_NAME}-${STAGE_NAME}
 
-aws cloudformation create-stack --stack-name $STACK_NAME \
-    --parameters ParameterKey=RepositoryOwner,ParameterValue=$REPO_OWNER \
-                    ParameterKey=RepositoryName,ParameterValue=$REPO_NAME \
-                    ParameterKey=BuildEnvironment,ParameterValue=$BUILD_ENV \
-                    ParameterKey=StageName,ParameterValue=$STAGE_NAME \
-                    ParameterKey=S3BucketName,ParameterValue=$S3_BUCKET_NAME \
-    --capabilities=CAPABILITY_IAM \
-    --template-body $TEMPLATE_BODY
+echo "Checking if stack exists ..."
+
+if ! aws cloudformation describe-stacks --stack-name ${STACK_NAME} ; then
+  aws cloudformation create-stack --stack-name $STACK_NAME \
+      --parameters ParameterKey=RepositoryOwner,ParameterValue=$REPO_OWNER \
+                      ParameterKey=RepositoryName,ParameterValue=$REPO_NAME \
+                      ParameterKey=BuildEnvironment,ParameterValue=$BUILD_ENV \
+                      ParameterKey=StageName,ParameterValue=$STAGE_NAME \
+                      ParameterKey=S3BucketName,ParameterValue=$S3_BUCKET_NAME \
+      --capabilities=CAPABILITY_IAM \
+      --template-body "${TEMPLATE_BODY}"
+else
+  echo -e "\nStack exists, attempting update ..."
+  aws cloudformation update-stack --stack-name $STACK_NAME \
+      --parameters ParameterKey=RepositoryOwner,ParameterValue=$REPO_OWNER \
+                      ParameterKey=RepositoryName,ParameterValue=$REPO_NAME \
+                      ParameterKey=BuildEnvironment,ParameterValue=$BUILD_ENV \
+                      ParameterKey=StageName,ParameterValue=$STAGE_NAME \
+                      ParameterKey=S3BucketName,ParameterValue=$S3_BUCKET_NAME \
+      --capabilities=CAPABILITY_IAM \
+      --template-body "${TEMPLATE_BODY}"
+fi

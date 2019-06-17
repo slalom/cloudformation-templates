@@ -96,6 +96,7 @@ Resources:
                 StackName: !Sub ${RepositoryName}-dev
                 RoleArn: !GetAtt CloudFormationServiceRole.Arn
                 ParameterOverrides: !Sub '{
+                  "RepositoryName": "${RepositoryName}",
                   "S3BucketName": "${S3BucketName}",
                   "StageName": "${StageName}"
                 }'
