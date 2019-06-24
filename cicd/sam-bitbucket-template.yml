@@ -64,7 +64,7 @@ Resources:
         Webhook: true
         FilterGroups:
           - - Type: EVENT
-              Pattern: PULL_REQUEST_UPDATED, PULL_REQUEST_MERGED
+              Pattern: PULL_REQUEST_MERGED
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
