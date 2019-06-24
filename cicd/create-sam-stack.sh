@@ -13,9 +13,10 @@
 #   owner: Required. Name of git owner
 #   branch: Optional. Repository branch. Defaults to master
 #   build environment: Optional. Defaults to nodejs8.11
+#   template: Optional. Defaults to sam-bitbucket-template
 #
-# Prerequisite:
-#   - Create a github personal token and store in ssm using below
+# Prerequisites:
+#   - The sam-github-template.yml requires creatiion of a github personal token and store in ssm using below
 #       aws ssm put-parameter --name /github/personal_access_token --value $TOKEN --type String
 #
 ###############################################################################
@@ -27,18 +28,20 @@ REPO_NAME=$1
 REPO_OWNER=$2
 REPO_BRANCH=${3:-master}
 BUILD_ENV=${4:-nodejs8.11}
+TEMPLATE=${5:-sam-bitbucket-template}
 
 # defaults
-INPUT_FILE=sam-template.yml
-OUTPUT_FILE=sam-template-output.yml
+INPUT_FILE=${TEMPLATE}.yml
+OUTPUT_FILE=${TEMPLATE}-output.yml
 STAGE_NAME=dev
-STACK_NAME=${REPO_NAME}-cicd-$STAGE_NAME
-TEMPLATE_BODY=$(cat ${SCRIPT_DIR}/sam-template.yml)
-S3_BUCKET_NAME=${REPO_NAME}-${STAGE_NAME}
+STACK_NAME=${REPO_NAME}-bb-cicd-$STAGE_NAME
+TEMPLATE_BODY=$(cat ${SCRIPT_DIR}/${INPUT_FILE})
+S3_BUCKET_NAME=${REPO_NAME}-bb-${STAGE_NAME}
 
 echo "Checking if stack exists ..."
 
 if ! aws cloudformation describe-stacks --stack-name ${STACK_NAME} ; then
+  echo -e "\nStack does not exist, creating..."
   aws cloudformation create-stack --stack-name $STACK_NAME \
       --parameters ParameterKey=RepositoryOwner,ParameterValue=$REPO_OWNER \
                       ParameterKey=RepositoryName,ParameterValue=$REPO_NAME \
@@ -48,7 +51,7 @@ if ! aws cloudformation describe-stacks --stack-name ${STACK_NAME} ; then
       --capabilities=CAPABILITY_IAM \
       --template-body "${TEMPLATE_BODY}"
 else
-  echo -e "\nStack exists, attempting update ..."
+  echo -e "\nStack exists, attempting update..."
   aws cloudformation update-stack --stack-name $STACK_NAME \
       --parameters ParameterKey=RepositoryOwner,ParameterValue=$REPO_OWNER \
                       ParameterKey=RepositoryName,ParameterValue=$REPO_NAME \
