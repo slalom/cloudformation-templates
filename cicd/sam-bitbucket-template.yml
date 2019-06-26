@@ -78,6 +78,18 @@ Resources:
         EnvironmentVariables:
           - Name: S3_BUCKET
             Value: !Ref ArtifactsBucket
+          - Name: REPOSITORY_NAME
+            Value: !Sub ${RepositoryName}
+          - Name: REPOSITORY_OWNER
+            Value: !Sub "${RepositoryOwner}"
+          - Name: STAGE
+            Value: !Sub "${StageName}"
+          - Name: PROJECT
+            Value: !Sub "${ProjectName}"
+          - Name: ORGANIZATION
+            Value: !Sub "${OrganizationName}"
+          - Name: CICD
+            Value: true
       Cache:
         Type: S3
         Location:
@@ -161,7 +173,8 @@ Resources:
                 ActionMode: CHANGE_SET_REPLACE
                 Capabilities: CAPABILITY_NAMED_IAM
                 TemplatePath: SourceOutput::template-output.yml
-                ChangeSetName: !Sub ${RepositoryName}-changeset
+                TemplateConfiguration: SourceOutput::template-configuration.json
+                ChangeSetName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}-changeset
                 StackName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}
                 RoleArn: !GetAtt CloudFormationServiceRole.Arn
                 ParameterOverrides: !Sub '{
