@@ -23,6 +23,7 @@ Parameters:
       - python2.7
       - python3.6
       - ruby2.5
+      - dotnet
   StageName:
     Type: String
     Description: Stage for pipeline, e.g. dev
@@ -30,6 +31,12 @@ Parameters:
   S3BucketName:
     Type: String
     Description: Name of artifact bucket
+  OrganizationName:
+    Type: String
+    Description: Name of Organization
+  ProjectName:
+    Type: String
+    Description: Name of Project
 
 Mappings:
   BuildEnvironmentsMap:
@@ -43,13 +50,15 @@ Mappings:
       image: aws/codebuild/python:3.6.5
     ruby2.5:
       image: aws/codebuild/ruby:2.5.1
+    dotnet:
+      image: aws/codebuild/standard:2.0
 
 Resources:
 
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub ${RepositoryName}-bb-build
+      Name: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-build-${StageName}
       Source:
         Type: BITBUCKET
         Location: !Sub https://bitbucket.org/${RepositoryOwner}/${RepositoryName}.git
@@ -72,6 +81,18 @@ Resources:
         EnvironmentVariables:
           - Name: S3_BUCKET
             Value: !Ref ArtifactsBucket
+          - Name: REPOSITORY
+            Value: !Sub ${RepositoryName}
+          - Name: REPOSITORY_OWNER
+            Value: !Sub "${RepositoryOwner}"
+          - Name: STAGE
+            Value: !Sub "${StageName}"
+          - Name: PROJECT
+            Value: !Sub "${ProjectName}"
+          - Name: ORGANIZATION
+            Value: !Sub "${OrganizationName}"
+          - Name: CICD
+            Value: true
       Cache:
         Type: S3
         Location:
@@ -115,8 +136,8 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-bb-build
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-bb-build:*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-${OrganizationName}-${ProjectName}-build-${StageName}
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-${OrganizationName}-${ProjectName}-build-${StageName}:*
               - Effect: Allow
                 Action:
                   - s3:GetObject
@@ -128,7 +149,7 @@ Resources:
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      Name: !Sub ${RepositoryName}-bb-pipeline
+      Name: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-pipeline-${StageName}
       Stages:
         - Name: Source
           Actions:
@@ -155,13 +176,16 @@ Resources:
                 ActionMode: CHANGE_SET_REPLACE
                 Capabilities: CAPABILITY_NAMED_IAM
                 TemplatePath: SourceOutput::template-output.yml
-                ChangeSetName: !Sub ${RepositoryName}-changeset
-                StackName: !Sub ${RepositoryName}-bb-dev
+                TemplateConfiguration: SourceOutput::template-configuration.json
+                ChangeSetName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}-changeset
+                StackName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}
                 RoleArn: !GetAtt CloudFormationServiceRole.Arn
                 ParameterOverrides: !Sub '{
                   "RepositoryName": "${RepositoryName}",
-                  "S3BucketName": "${S3BucketName}",
                   "StageName": "${StageName}"
+                  "S3BucketName": "${S3BucketName}",
+                  "OrganizationName": "${OrganizationName}"
+                  "ProjectName": "${ProjectName}"
                 }'
               InputArtifacts:
                 - Name: SourceOutput
@@ -174,8 +198,8 @@ Resources:
                 Version: 1
               Configuration:
                 ActionMode: CHANGE_SET_EXECUTE
-                ChangeSetName: !Sub ${RepositoryName}-changeset
-                StackName: !Sub ${RepositoryName}-bb-dev
+                ChangeSetName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}-changeset
+                StackName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}
               RunOrder: 2
       RoleArn: !GetAtt  CodePipelineServiceRole.Arn
       ArtifactStore:
@@ -347,5 +371,10 @@ Resources:
                   - ec2:DescribeVpcs
                   - ec2:DescribeSubnets
                   - ec2:DescribeSecurityGroups
+                Resource:
+                  - "*"        
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
                 Resource:
                   - "*"        
