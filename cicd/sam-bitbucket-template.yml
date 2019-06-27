@@ -23,6 +23,7 @@ Parameters:
       - python2.7
       - python3.6
       - ruby2.5
+      - dotnet
   StageName:
     Type: String
     Description: Stage for pipeline, e.g. dev
@@ -49,6 +50,8 @@ Mappings:
       image: aws/codebuild/python:3.6.5
     ruby2.5:
       image: aws/codebuild/ruby:2.5.1
+    dotnet:
+      image: aws/codebuild/standard:2.0
 
 Resources:
 
@@ -78,7 +81,7 @@ Resources:
         EnvironmentVariables:
           - Name: S3_BUCKET
             Value: !Ref ArtifactsBucket
-          - Name: REPOSITORY_NAME
+          - Name: REPOSITORY
             Value: !Sub ${RepositoryName}
           - Name: REPOSITORY_OWNER
             Value: !Sub "${RepositoryOwner}"
@@ -179,8 +182,10 @@ Resources:
                 RoleArn: !GetAtt CloudFormationServiceRole.Arn
                 ParameterOverrides: !Sub '{
                   "RepositoryName": "${RepositoryName}",
-                  "S3BucketName": "${S3BucketName}",
                   "StageName": "${StageName}"
+                  "S3BucketName": "${S3BucketName}",
+                  "OrganizationName": "${OrganizationName}"
+                  "ProjectName": "${ProjectName}"
                 }'
               InputArtifacts:
                 - Name: SourceOutput
@@ -193,7 +198,7 @@ Resources:
                 Version: 1
               Configuration:
                 ActionMode: CHANGE_SET_EXECUTE
-                ChangeSetName: !Sub ${RepositoryName}-changeset
+                ChangeSetName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}-changeset
                 StackName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}
               RunOrder: 2
       RoleArn: !GetAtt  CodePipelineServiceRole.Arn
