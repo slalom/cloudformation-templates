@@ -58,7 +58,7 @@ Resources:
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-build-${StageName}
+      Name: !Sub ${RepositoryName}-build-${StageName}
       Source:
         Type: BITBUCKET
         Location: !Sub https://bitbucket.org/${RepositoryOwner}/${RepositoryName}.git
@@ -136,8 +136,8 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-${OrganizationName}-${ProjectName}-build-${StageName}
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-${OrganizationName}-${ProjectName}-build-${StageName}:*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build-${StageName}
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${RepositoryName}-build-${StageName}:*
               - Effect: Allow
                 Action:
                   - s3:GetObject
@@ -149,7 +149,7 @@ Resources:
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      Name: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-pipeline-${StageName}
+      Name: !Sub ${RepositoryName}-pipeline-${StageName}
       Stages:
         - Name: Source
           Actions:
@@ -177,14 +177,14 @@ Resources:
                 Capabilities: CAPABILITY_NAMED_IAM
                 TemplatePath: SourceOutput::template-output.yml
                 TemplateConfiguration: SourceOutput::template-configuration.json
-                ChangeSetName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}-changeset
-                StackName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}
+                ChangeSetName: !Sub ${RepositoryName}-${StageName}-changeset
+                StackName: !Sub ${RepositoryName}-${StageName}
                 RoleArn: !GetAtt CloudFormationServiceRole.Arn
                 ParameterOverrides: !Sub '{
                   "RepositoryName": "${RepositoryName}",
-                  "StageName": "${StageName}"
+                  "StageName": "${StageName}",
                   "S3BucketName": "${S3BucketName}",
-                  "OrganizationName": "${OrganizationName}"
+                  "OrganizationName": "${OrganizationName}",
                   "ProjectName": "${ProjectName}"
                 }'
               InputArtifacts:
@@ -198,8 +198,8 @@ Resources:
                 Version: 1
               Configuration:
                 ActionMode: CHANGE_SET_EXECUTE
-                ChangeSetName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}-changeset
-                StackName: !Sub ${RepositoryName}-${OrganizationName}-${ProjectName}-${StageName}
+                ChangeSetName: !Sub ${RepositoryName}-${StageName}-changeset
+                StackName: !Sub ${RepositoryName}-${StageName}
               RunOrder: 2
       RoleArn: !GetAtt  CodePipelineServiceRole.Arn
       ArtifactStore:
