@@ -98,6 +98,40 @@ Resources:
         Location:
           Fn::Sub: ${ArtifactsBucket}/cache
 
+  CodeBuildConnectivityTestProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${RepositoryName}-connectivity-test-${StageName}
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec-connectivity.yml
+      Artifacts:
+        Type: CODEPIPELINE
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: !FindInMap [ BuildEnvironmentsMap, !Ref BuildEnvironment, image ]
+        EnvironmentVariables:
+          - Name: S3_BUCKET
+            Value: !Ref ArtifactsBucket
+          - Name: REPOSITORY
+            Value: !Sub ${RepositoryName}
+          - Name: REPOSITORY_OWNER
+            Value: !Sub "${RepositoryOwner}"
+          - Name: STAGE
+            Value: !Sub "${StageName}"
+          - Name: PROJECT
+            Value: !Sub "${ProjectName}"
+          - Name: ORGANIZATION
+            Value: !Sub "${OrganizationName}"
+          - Name: CICD
+            Value: true
+      Cache:
+        Type: S3
+        Location:
+          Fn::Sub: ${ArtifactsBucket}/cache
+  
   ArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -143,7 +177,9 @@ Resources:
                   - s3:GetObject
                   - s3:GetObjectVersion
                   - s3:PutObject
+                  - s3:ListBucket
                 Resource:
+                  - !Sub arn:aws:s3:::${ArtifactsBucket}
                   - !Sub arn:aws:s3:::${ArtifactsBucket}/*
 
   CodePipeline:
@@ -201,6 +237,19 @@ Resources:
                 ChangeSetName: !Sub ${RepositoryName}-${StageName}-changeset
                 StackName: !Sub ${RepositoryName}-${StageName}
               RunOrder: 2
+        - Name: ConnectivityTest
+          Actions:
+            - Name: Test
+              ActionTypeId:
+                Category: Test
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName: !Sub ${RepositoryName}-connectivity-test-${StageName}
+              InputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
       RoleArn: !GetAtt  CodePipelineServiceRole.Arn
       ArtifactStore:
         Type: S3
@@ -229,6 +278,7 @@ Resources:
                   - codebuild:StartBuild
                 Resource:
                   - !GetAtt CodeBuildProject.Arn
+                  - !GetAtt CodeBuildConnectivityTestProject.Arn
               - Effect: Allow
                 Action:
                   - cloudformation:DescribeStacks
